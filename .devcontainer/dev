@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
-exec uv run --no-project --script "$PROJECT_ROOT/scripts/sandbox.py" dev "$@"
+exec uv --no-config run --no-project --managed-python --python 3.13 --script "$PROJECT_ROOT/setup/sandbox.py" dev "$@"

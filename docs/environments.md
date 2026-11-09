@@ -62,11 +62,11 @@ integration: disable forwarding in your editor if you need that isolation.
 Extra datasets: add paths under `read_only` in `access_env.yaml`, regenerate on the
 host, then rebuild/recreate the chosen environment. The standalone agent-box
 continues using `.agentbox.local` independently of this generator.
-The devcontainer config directory and access source file are mounted read-only;
-the checkout remains writable, so parent-directory replacement is still possible.
-Keep sensitive host launch logic outside the checkout for stronger protection.
-sbx protects the generated root environment file, but not the source access YAML.
-Review source access changes before invoking initialization on the host.
+The `.devcontainer/`, `setup/`, and `docker/` directories are mounted read-only
+in devcontainers and declared as read-only workspaces for sbx. Host edits remain
+possible; regenerate/recreate the runtime afterward. All setup remains in the
+project. See [control-file protection](control-protection.md) for convenience-link
+limitations. Launch sbx using `.devcontainer/sbxenv.yaml` directly.
 `network_allow` adds sbx allow rules; it does not itself select a deny-by-default
 sbx policy and does not restrict devcontainer networking.
 

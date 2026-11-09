@@ -81,6 +81,27 @@ Native agent tracking/resume through the wrapper has not been verified.
 See the [Herdr workflow and permission guidance](docs/herdr.md), including the
 opt-in bypass command and the isolation limits of the current configuration.
 
+## Read-only setup files
+
+All setup stays in this repository. There is no external launcher installation.
+Normal devcontainer and sbx sessions mount `.devcontainer/`, `setup/`, and `docker/`
+read-only. `scripts/`, application code, tests and docs remain writable; explicitly
+read-only datasets remain read-only too.
+
+The real access configuration and generated sbx file live in `.devcontainer/`.
+The root `access_env.yaml` and `init.sh` are convenience links into that directory.
+Edit the real files from your host, then regenerate and rebuild:
+
+```bash
+# On the host: edit .devcontainer/access_env.yaml or .devcontainer/Dockerfile.
+bash .devcontainer/init.sh --sandbox
+.devcontainer/dev rebuild
+```
+
+For sbx, regenerate, inspect the plan, then remove/recreate the environment using
+`.devcontainer/sbxenv.yaml`. There is no agent edit mode or separate approval step.
+See [control-file protection](docs/control-protection.md) for the exact behavior.
+
 ## Start Docker Sandboxes (sbx)
 
 Install [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) separately.
@@ -90,9 +111,9 @@ runtime and does not run on Podman.
 ```bash
 sbx login                                  # once per machine
 cd my-project
-sbx env plan sbxenv.yaml                    # inspect generated access settings
-sbx env run sbxenv.yaml                     # start/attach to default agent
-sbx env run sbxenv.yaml --env-arg agent=codex
+sbx env plan .devcontainer/sbxenv.yaml                    # inspect generated access settings
+sbx env run .devcontainer/sbxenv.yaml                     # start/attach to default agent
+sbx env run .devcontainer/sbxenv.yaml --env-arg agent=codex
 ```
 
 The default sbx agent is selected by `agent` in `access_env.yaml`. Use separate
@@ -136,16 +157,16 @@ bash init.sh --sandbox         # regenerate configs only; preserve package/code/
 For an existing sbx environment, apply the regenerated config with:
 
 ```bash
-sbx env plan sbxenv.yaml
-sbx env rm sbxenv.yaml         # removes sandbox state; keep work in mounted paths
-sbx env run sbxenv.yaml
+sbx env plan .devcontainer/sbxenv.yaml
+sbx env rm .devcontainer/sbxenv.yaml         # removes sandbox state; keep work in mounted paths
+sbx env run .devcontainer/sbxenv.yaml
 ```
 
 Regeneration does not change a running environment. The dev wrapper refuses to
 reuse a container with an older access policy until you rebuild it. Review config
 changes before regenerating on the host. Generated `.devcontainer/devcontainer.json`
-and `sbxenv.yaml` are ignored by Git because they can contain machine-specific paths.
-Edit `access_env.yaml` for mounts/resources and `.devcontainer/Dockerfile` for tools.
+and `.devcontainer/sbxenv.yaml` are ignored by Git because they can contain machine-specific paths.
+Edit `.devcontainer/access_env.yaml` for mounts/resources and `.devcontainer/Dockerfile` for tools.
 Manual JSON edits survive `dev rebuild` but are replaced by the next `init.sh` generation.
 The standalone `docker/agent-box` option still uses its own `.agentbox` rules.
 
@@ -153,7 +174,8 @@ The standalone `docker/agent-box` option still uses its own `.agentbox` rules.
 
 ```text
 src/<package>/      installable Python code
-scripts/            initialization and sandbox CLI
+scripts/            writable project scripts
+setup/              read-only sandbox setup and launcher code
 tests/              tests
 docs/adr/           architecture decisions
 AGENTS.md           shared coding instructions
@@ -161,7 +183,7 @@ CLAUDE.md           points Claude to AGENTS.md
 access_env.yaml     source access policy and resource settings
 .devcontainer/      Dockerfile, dev launcher, generated devcontainer.json
 docker/             optional standalone agent-box
-sbxenv.yaml         generated Docker Sandboxes environment
+sbxenv.yaml         convenience link to .devcontainer/sbxenv.yaml
 ```
 
 ```bash

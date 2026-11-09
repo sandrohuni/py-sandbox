@@ -57,6 +57,7 @@ possibly-unresolved-reference = "warn"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = ["integration: opt-in functional tests against a real container engine"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

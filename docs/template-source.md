@@ -10,6 +10,9 @@ container access configuration.
 - `access_env.yaml` defines directory access, runtime selection, and resource limits.
   Sandbox initialization generates the per-machine devcontainer and sbx configs;
   those outputs are ignored by Git.
+- `setup/` holds protected setup/launcher code; `scripts/` stays writable for
+  project tasks. `.devcontainer/`, `setup/`, and `docker/` are read-only inside
+  both configured runtimes, while remaining editable on the host.
 - `.devcontainer/dev` manages the project devcontainer. The standalone `docker/`
   launcher keeps its own `.agentbox` configuration.
 - Ruff targets Python 3.13. Ruff and ty exclude the workspace uv cache.

@@ -171,10 +171,10 @@ After creating your project in section 4:
 
 ```bash
 bash init.sh --full my-project
-sbx env plan sbxenv.yaml
-sbx env run sbxenv.yaml                     # default agent from access_env.yaml
+sbx env plan .devcontainer/sbxenv.yaml
+sbx env run .devcontainer/sbxenv.yaml                     # default agent from access_env.yaml
 # Alternatively, use a separate environment for Codex:
-sbx env run sbxenv.yaml --name my-project-codex --env-arg agent=codex
+sbx env run .devcontainer/sbxenv.yaml --name my-project-codex --env-arg agent=codex
 ```
 
 Use the same `--name` for later plan, run, and rm commands for that environment.
@@ -216,16 +216,21 @@ For daily work in Herdr, see the [Herdr workflow](herdr.md).
 
 ## 5. Update access and verify it
 
+Setup code lives in `setup/`; ordinary project scripts live in writable `scripts/`.
+Both runtimes mount the control directories read-only. No separate installation
+outside the project is required. Edit `.devcontainer/access_env.yaml` or the
+Dockerfile on your host. See [control-file protection](control-protection.md).
+
 After changing paths or resource settings, run on the host:
 
 ```bash
-bash init.sh --sandbox
+bash .devcontainer/init.sh --sandbox
 .devcontainer/dev info
 .devcontainer/dev rebuild
 ```
 
-For sbx, review `sbx env plan sbxenv.yaml`, then remove/recreate that environment
-with `sbx env rm sbxenv.yaml` and `sbx env run sbxenv.yaml`. Sandbox-only state is
+For sbx, review `sbx env plan .devcontainer/sbxenv.yaml`, then remove/recreate that environment
+with `sbx env rm .devcontainer/sbxenv.yaml` and `sbx env run .devcontainer/sbxenv.yaml`. Sandbox-only state is
 removed; keep work you need in mounted project/output paths.
 
 Use `dev info` to compare configured paths with actual container mounts. Verify

@@ -37,7 +37,7 @@ cd /path/to/my-project
 
 Run `.devcontainer/dev codex` in place of Claude when you want to use Codex.
 Use one editing agent per checkout. For concurrent editing agents, use separate
-clones and generate each clone's config with `bash init.sh --sandbox`; each gets
+clones and generate each clone's config with `bash .devcontainer/init.sh --sandbox`; each gets
 its own container and project-scoped credentials. This workflow is simpler than
 linked Git worktrees, whose shared Git directory may lie outside the mounted
 checkout and require additional access.
@@ -49,10 +49,14 @@ The container and agent credential volumes are reused. Herdr is the UI; the
 wrapper decides where the agent executes. A host pane running plain `claude`
 executes the host agent rather than the project container.
 
+Normal sessions keep `.devcontainer/`, `setup/`, and `docker/` read-only.
+Project `scripts/` stays writable. You can edit the protected source files from
+the host without any special unlock or approval command.
+
 After changing access, end the attached agent session, then run on the host:
 
 ```bash
-bash init.sh --sandbox
+bash .devcontainer/init.sh --sandbox
 .devcontainer/dev rebuild
 .devcontainer/dev claude
 ```
@@ -64,7 +68,7 @@ through it. Host-installed integration hooks do not automatically appear inside
 the container. Do not forward Herdr's control socket to the agent container:
 that would expose control of host-side panes and commands.
 
-For sbx, launch `sbx env run sbxenv.yaml` directly in a Herdr pane. Herdr supplies
+For sbx, launch `sbx env run .devcontainer/sbxenv.yaml` directly in a Herdr pane. Herdr supplies
 the terminal UI, while sbx supplies its separate sandbox runtime.
 
 See [Herdr agents](https://herdr.dev/tui/docs/agents/) and

@@ -20,3 +20,5 @@ local.sbxenv.yaml
 .devcontainer/devcontainer.json
 .devcontainer/runtime.local.json
 sbxenv.yaml
+
+.devcontainer/sbxenv.yaml

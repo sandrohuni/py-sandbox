@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/sandbox.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "setup/sandbox.py"
 spec = importlib.util.spec_from_file_location("sandbox", SCRIPT)
 assert spec is not None and spec.loader is not None
 sandbox = importlib.util.module_from_spec(spec)
@@ -22,23 +22,23 @@ spec.loader.exec_module(sandbox)
 @pytest.fixture
 def project(tmp_path):
     root = tmp_path / "project with spaces"
-    (root / "scripts").mkdir(parents=True)
+    (root / "setup").mkdir(parents=True)
     (root / ".devcontainer").mkdir()
-    shutil.copy2(SCRIPT, root / "scripts/sandbox.py")
-    shutil.copy2(SCRIPT.with_name("init_project.py"), root / "scripts/init_project.py")
-    (root / "access_env.yaml").write_text("read_and_write: [.]\nread_only: []\nengine: docker\n")
+    shutil.copy2(SCRIPT, root / "setup/sandbox.py")
+    shutil.copy2(SCRIPT.with_name("init_project.py"), root / "setup/init_project.py")
+    (root / ".devcontainer/access_env.yaml").write_text("read_and_write: [.]\nread_only: []\nengine: docker\n")
     return root
 
 
 def generate(root):
-    plan = sandbox.parse_plan((root / "access_env.yaml").read_text(), root, dict(os.environ))
+    plan = sandbox.parse_plan((root / ".devcontainer/access_env.yaml").read_text(), root, dict(os.environ))
     sandbox.generate(root, plan)
     return plan
 
 
 def cli(root, *arguments, env=None):
     return subprocess.run(
-        [sys.executable, str(root / "scripts/sandbox.py"), *arguments],
+        [sys.executable, str(root / "setup/sandbox.py"), *arguments],
         cwd=root.parent,
         env=env,
         text=True,
@@ -59,7 +59,10 @@ def test_both_backends_preserve_read_only_overlays_and_paths(project, tmp_path):
     assert {"path": str(data), "readOnly": True} in sbx["additionalWorkspaces"]
     assert {"path": str(output), "readOnly": False} in sbx["additionalWorkspaces"]
     assert dev["workspaceFolder"] == "${localWorkspaceFolder}"
-    assert any("access_env.yaml" in mount and mount.endswith(",readonly") for mount in dev["mounts"])
+    for name in (".devcontainer", "setup", "docker"):
+        assert any(f"/{name},type=bind,readonly" in mount for mount in dev["mounts"])
+        assert {"path": str(project / name), "readOnly": True} in sbx["additionalWorkspaces"]
+    assert not any("/scripts," in mount for mount in dev["mounts"])
 
 
 @pytest.mark.parametrize(
@@ -78,7 +81,7 @@ def test_both_backends_preserve_read_only_overlays_and_paths(project, tmp_path):
     ],
 )
 def test_invalid_policy_fails_before_generation(project, text):
-    (project / "access_env.yaml").write_text(text)
+    (project / ".devcontainer/access_env.yaml").write_text(text)
     result = cli(project, "init", "--sandbox")
     assert result.returncode != 0
     assert not (project / ".devcontainer/devcontainer.json").exists()
@@ -90,10 +93,12 @@ def test_sandbox_mode_preserves_project_files_and_removes_old_mounts(project, tm
     data.mkdir()
     metadata = project / "pyproject.toml"
     metadata.write_text("# user metadata\n")
-    (project / "access_env.yaml").write_text(yaml.safe_dump({"read_and_write": ["."], "read_only": [str(data)]}))
+    (project / ".devcontainer/access_env.yaml").write_text(
+        yaml.safe_dump({"read_and_write": ["."], "read_only": [str(data)]})
+    )
     assert cli(project, "init", "--sandbox").returncode == 0
     assert str(data) in (project / "sbxenv.yaml").read_text()
-    (project / "access_env.yaml").write_text("read_and_write: [.]\nread_only: []\n")
+    (project / ".devcontainer/access_env.yaml").write_text("read_and_write: [.]\nread_only: []\n")
     assert cli(project, "init", "--sandbox").returncode == 0
     assert str(data) not in (project / "sbxenv.yaml").read_text()
     assert str(data) not in (project / ".devcontainer/devcontainer.json").read_text()
@@ -149,7 +154,7 @@ elif name == "devcontainer" and sys.argv[1] == "exec":
 @pytest.mark.parametrize("engine", ["docker", "podman"])
 def test_exec_starts_correct_backend_and_preserves_arguments_and_exit_status(project, fake_tools, engine):
     env, log = fake_tools
-    (project / "access_env.yaml").write_text(f"read_and_write: [.]\nengine: {engine}\n")
+    (project / ".devcontainer/access_env.yaml").write_text(f"read_and_write: [.]\nengine: {engine}\n")
     generate(project)
     result = cli(project, "dev", "exec", "pytest", "-k", "a or b", env=dict(env, EXEC_EXIT="7"))
     assert result.returncode == 7
@@ -163,7 +168,7 @@ def test_exec_starts_correct_backend_and_preserves_arguments_and_exit_status(pro
 def test_stale_policy_requires_regeneration_then_runtime_rebuild(project, fake_tools):
     env, log = fake_tools
     generate(project)
-    with (project / "access_env.yaml").open("a") as policy:
+    with (project / ".devcontainer/access_env.yaml").open("a") as policy:
         policy.write("memory: 4g\n")
     result = cli(project, "dev", "shell", env=env)
     assert result.returncode != 0 and "--sandbox" in result.stderr
@@ -184,7 +189,7 @@ def test_info_inspects_actual_mounts_without_starting_and_down_ignores_broken_ya
     assert "ro  /data -> /data" in result.stdout
     assert '"up"' not in log.read_text()
     (project / ".devcontainer/runtime.local.json").write_text('{"engine":"podman"}')
-    (project / "access_env.yaml").write_text("broken: [")
+    (project / ".devcontainer/access_env.yaml").write_text("broken: [")
     result = cli(project, "dev", "down", env=dict(env, HAS_CONTAINER="1"))
     assert result.returncode == 0, result.stderr
     assert '["podman", "rm", "--force", "container-a"]' in log.read_text()
@@ -203,7 +208,7 @@ def test_environment_path_changes_invalidate_generated_policy(project, tmp_path)
 
 def test_down_before_first_start_uses_selected_engine(project, fake_tools):
     env, log = fake_tools
-    (project / "access_env.yaml").write_text("engine: podman\nread_and_write: [missing]\n")
+    (project / ".devcontainer/access_env.yaml").write_text("engine: podman\nread_and_write: [missing]\n")
     result = cli(project, "dev", "down", env=env)
     assert result.returncode == 0, result.stderr
     assert json.loads(log.read_text().splitlines()[0])[0] == "podman"

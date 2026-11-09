@@ -7,18 +7,37 @@ import tomllib
 from pathlib import Path
 
 
-def main() -> None:
-    if len(sys.argv) > 2:
-        raise SystemExit("Usage: bash init.sh --full [project-name]")
-    root = Path(__file__).resolve().parents[1]
+def initialize(root: Path, requested_name: str | None = None) -> None:
+    def local_path(relative: str) -> None:
+        path = root / relative
+        current = path
+        while current != root:
+            if current.is_symlink():
+                raise SystemExit(f"Refusing project initialization through a symlink: {current}")
+            current = current.parent
+        if not path.resolve().is_relative_to(root):
+            raise SystemExit(f"Initialization target is outside the checkout: {path}")
+
+    local_path("pyproject.toml")
     metadata = root / "pyproject.toml"
     current_name = tomllib.loads(metadata.read_text())["project"]["name"]
-    name = sys.argv[1] if len(sys.argv) == 2 else (root.name if current_name == "mypackage" else current_name)
+    name = requested_name or (root.name if current_name == "mypackage" else current_name)
     package = name.replace("-", "_")
     if not re.fullmatch(r"[a-z][a-z0-9_-]*", name) or keyword.iskeyword(package) or name == "mypackage":
         raise SystemExit("Use a lowercase Python-compatible name other than mypackage, optionally with hyphens.")
     if current_name not in ("mypackage", name):
         raise SystemExit(f"Already initialized as {current_name}; refusing to rename existing project work.")
+    for relative in (
+        "uv.lock",
+        "AGENTS.md",
+        "README.md",
+        "tests/test_smoke.py",
+        "docs/adr/.gitkeep",
+        "scripts",
+        "src/mypackage",
+        f"src/{package}/__init__.py",
+    ):
+        local_path(relative)
     source = root / "src/mypackage"
     destination = root / "src" / package
     if source.exists() and destination.exists():
@@ -54,4 +73,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 2:
+        raise SystemExit("Usage: bash init.sh --full [project-name]")
+    initialize(Path(__file__).resolve().parents[1], sys.argv[1] if len(sys.argv) == 2 else None)
