@@ -1,13 +1,19 @@
-# Template source
+# Template structure
 
-Based on https://github.com/hydrosolutions/pyplate at `f92556680ade1790f1764ae10d334cd5576aa5ab`.
+`py-sandbox` combines a uv Python project with shared agent guidance and generated
+container access configuration.
 
-AGENTS.md extends pyplate with a functional-testing-first policy outside the
-stamped doctrine block. CLAUDE.md retains its upstream link. Python metadata,
-lockfile, version selection and import smoke test also originate there. The source
-package is a placeholder. The initializer supports portable macOS/Linux operation, repeatable full setup,
-and config-only updates. The access YAML generator and devcontainer launcher are
-local additions; generated runtime configs are ignored by Git. Fleet retrofit/sync scripts are not included.
-Sandbox configuration comes from agent-sandbox-kit. Ruff targets Python 3.13;
-Ruff and ty explicitly exclude the workspace uv cache, including before git init.
-GitHub template status is a repository setting, not a local file property.
+- `AGENTS.md` defines design choices and a functional testing policy. `CLAUDE.md`
+  points to those shared instructions. Initialization fills in the project overview.
+- `src/mypackage/` is the placeholder package. Full initialization renames it and
+  updates the project metadata and import smoke test while preserving existing work.
+- `access_env.yaml` defines directory access, runtime selection, and resource limits.
+  Sandbox initialization generates the per-machine devcontainer and sbx configs;
+  those outputs are ignored by Git.
+- `.devcontainer/dev` manages the project devcontainer. The standalone `docker/`
+  launcher keeps its own `.agentbox` configuration.
+- Ruff targets Python 3.13. Ruff and ty exclude the workspace uv cache.
+
+GitHub template mode is a repository setting. Create new projects from
+[sandrohuni/py-sandbox](https://github.com/sandrohuni/py-sandbox), then follow the
+[setup guide](setup.md).

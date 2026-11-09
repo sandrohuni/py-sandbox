@@ -1,6 +1,6 @@
 # py-sandbox
 
-A uv Python project with pyplate's agent instructions and your choice of devcontainer or Docker Sandbox.
+A uv Python project template with shared agent instructions and your choice of devcontainer or Docker Sandbox.
 
 ## Get the template
 
@@ -19,18 +19,6 @@ bash init.sh --full my-project
 `bash init.sh my-project` is also supported as shorthand for `--full my-project`.
 See the [installation guide](docs/setup.md) for the tools required on your host
 and step-by-step Docker, Podman, and sbx setup.
-
-To use the original upstream Python template directly:
-
-```bash
-gh repo create my-project --template hydrosolutions/pyplate --clone --private
-cd my-project
-bash init.sh my-project
-```
-
-Those commands use upstream pyplate's initializer and files. The sandbox launcher,
-`access_env.yaml`, and `--sandbox` mode are additions in this template; they are
-not supplied by the upstream command above.
 
 ## First setup
 
@@ -82,6 +70,16 @@ For VS Code also set `"dev.containers.dockerPath": "podman"` in your user settin
 Use **Dev Containers: Reopen in Container** to work in the editor.
 Before switching engines on an existing project, run `.devcontainer/dev down` with the old engine.
 Podman is mostly CLI compatible; GPU, UID and SELinux behavior remain host-specific.
+
+## Work in Herdr
+
+Keep Herdr on the host. In a project pane run `.devcontainer/dev claude` or
+`.devcontainer/dev codex`; use another pane for `.devcontainer/dev shell` or tests.
+The wrapper runs the agent inside the container while Herdr remains your UI.
+Native agent tracking/resume through the wrapper has not been verified.
+
+See the [Herdr workflow and permission guidance](docs/herdr.md), including the
+opt-in bypass command and the isolation limits of the current configuration.
 
 ## Start Docker Sandboxes (sbx)
 
@@ -174,4 +172,4 @@ sbxenv.yaml         generated Docker Sandboxes environment
 ```
 
 See [installation and host setup](docs/setup.md), [environment details](docs/environments.md), [agent guidance](docs/agent-guidance.md),
-and [template provenance](docs/template-source.md).
+and [template structure](docs/template-source.md).

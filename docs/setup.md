@@ -9,6 +9,11 @@ terminal. Choose one runtime; installing all three is optional.
 | Podman devcontainer | Git, uv, Podman 5+, Dev Containers CLI | Same project Dockerfile, using Podman |
 | Docker Sandboxes | Git, uv, sbx, supported virtualization | Separate microVM with an sbx agent image |
 
+For macOS, start with Docker for this template: startup, read-only mounts, access
+removal, and rebuild were verified against Docker. Podman remains an alternative;
+VS Code describes it as mostly CLI compatible and does not officially support
+alternative engines. See [runtime compatibility](https://code.visualstudio.com/remote/advancedcontainers/docker-options).
+
 GitHub CLI is useful for creating a project from the template. VS Code and its
 Dev Containers extension are optional. The wrapper scripts use Bash. The
 project's Python, Node, uv, Claude Code, and Codex are installed in the
@@ -206,6 +211,8 @@ package, so use a fresh template-generated repository for each project.
 The [README command reference](../README.md#start-a-devcontainer) covers agents,
 shells, arbitrary commands, info, rebuild, and down. Log in to your chosen agent
 inside its environment; credential volumes persist across devcontainer rebuilds.
+
+For daily work in Herdr, see the [Herdr workflow](herdr.md).
 
 ## 5. Update access and verify it
 

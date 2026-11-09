@@ -66,6 +66,3 @@ addopts = ["--strict-markers", "--strict-config", "-ra"]
 # Keep uv's cache inside the workspace: agent gate runners sandbox children to
 # workspace-write, and uv's default ~/.cache/uv is denied there.
 cache-dir = ".uv-cache"
-
-[tool.uv.sources]
-# ctrl-freak = { git = "https://github.com/hydrosolutions/ctrl-freak.git", rev = "main" } # example of how to add a git dependency

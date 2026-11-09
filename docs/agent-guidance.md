@@ -1,12 +1,12 @@
 # Agent guidance
 
-`AGENTS.md` is based on pyplate with an explicit local testing policy.
-`CLAUDE.md` retains pyplate's link to the shared instructions.
+`AGENTS.md` defines project design choices and an explicit functional testing policy.
+`CLAUDE.md` links to the same shared instructions.
 The initializer substitutes the project overview only. AGENTS.md asks for uv,
 a mathematical denotation line in module docstrings, one composition root for
 configuration and I/O authority, narrow function inputs, domain types for units
 and invariants, explicit failures, and library-native test assertions. It retains
-pyplate's stamped doctrine block for compatibility with upstream doctrine tooling.
+a stamped design-doctrine block for compatibility with doctrine synchronization tools.
 The testing policy favors a few real functional checks, restricts mocks to justified
 external boundaries, and requires reporting integrations that were not verified.
 
@@ -17,8 +17,7 @@ compiler guarantees or filesystem permissions. Review code and run checks.
 Codex discovers AGENTS.md along the working-directory hierarchy:
 https://learn.chatgpt.com/docs/agent-configuration/agents-md
 
-`CLAUDE.md` contains pyplate's link to AGENTS.md, keeping one source of rules.
-It is intentionally the exact upstream file rather than a second copy of the rules.
+`CLAUDE.md` links to AGENTS.md, keeping one source of rules for both agents.
 
 Container mounts and runtime policies enforce isolation. No rule file prevents
 an agent from writing to the writable checkout or using available network access.
