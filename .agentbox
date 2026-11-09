@@ -1,0 +1,4 @@
+# Optional extra mounts; machine paths belong in .agentbox.local.
+# ro $HOME/datasets/my-data
+# rw ./runs
+# gpu all

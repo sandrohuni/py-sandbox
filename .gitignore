@@ -1,0 +1,22 @@
+.DS_Store
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+runs/
+.agentbox.local
+local.sbxenv.yaml
+.env
+.env.*
+!.env.example
+
+# Generated per-machine access configs and runtime bookkeeping
+.devcontainer/devcontainer.json
+.devcontainer/runtime.local.json
+sbxenv.yaml

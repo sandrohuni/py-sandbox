@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# agent-box: start a coding agent in a container from the current folder.
+#
+# The current folder is always mounted read-write.
+# Extra access comes from a .agentbox file in the folder and/or flags:
+#
+#   .agentbox example:
+#     ro   ~/datasets/imagenet     # read-only
+#     ro   ./data                  # read-only, even though it sits inside the rw project
+#     rw   ~/experiments/runs      # read-write (checkpoints, logs)
+#     gpu  all                     # or: gpu 0   / gpu 0,1
+#
+#   Agent (first argument, default claude):
+#     agent-box            -> Claude Code
+#     agent-box codex      -> Codex
+#
+#   Flags (added on top of the file):
+#     agent-box --ro PATH --rw PATH --gpu all -- claude --dangerously-skip-permissions
+#
+# Paths are mounted at the SAME absolute path inside the container,
+# so configs and scripts that use absolute paths keep working.
+
+set -euo pipefail
+
+ENGINE="${CONTAINER_ENGINE:-docker}"
+IMAGE="${AGENT_IMAGE:-agent-box:latest}"
+PROJECT="$(pwd)"
+GPU=""
+MOUNTS=(-v "$PROJECT:$PROJECT:rw")   # project first; nested ro mounts override it
+CMD=(claude)
+
+case "${1:-}" in
+  claude) CMD=(claude); shift ;;
+  codex)  CMD=(codex);  shift ;;
+esac
+
+add_mount() {   # $1 = ro|rw, $2 = path
+  local mode="$1" p="${2/#\~/$HOME}"
+  [[ "$p" != /* ]] && p="$PROJECT/$p"
+  # Resolve existing paths with portable pwd (macOS has no realpath -m).
+  [[ "$mode" == "rw" ]] && mkdir -p "$p"
+  if [[ -d "$p" ]]; then p="$(cd "$p" && pwd -P)"; fi
+  if [[ "$mode" == "ro" && ! -e "$p" ]]; then
+    echo "agent-box: read-only path does not exist: $p" >&2; exit 1
+  fi
+  MOUNTS+=(-v "$p:$p:$mode")
+  echo "  $mode  $p"
+}
+
+echo "agent-box: $PROJECT (rw)"
+
+# 1) rules from .agentbox (committed, shared) and .agentbox.local (gitignored,
+#    machine-specific paths). Both are mounted read-only so the agent cannot
+#    grant itself more access for the next launch.
+for cfg in .agentbox .agentbox.local; do
+  touch "$PROJECT/$cfg"   # must exist, or the agent could create it
+  MOUNTS+=(-v "$PROJECT/$cfg:$PROJECT/$cfg:ro")
+  while read -r kind value _; do
+    [[ -z "${kind:-}" || "$kind" == \#* ]] && continue
+    [[ -n "${value:-}" ]] || { echo "agent-box: missing value for $kind in $cfg" >&2; exit 1; }
+    value="${value//\$HOME/$HOME}"
+    case "$kind" in
+      ro|rw) add_mount "$kind" "$value" ;;
+      gpu)   GPU="$value" ;;
+      *)     echo "agent-box: unknown rule '$kind' in $cfg" >&2; exit 1 ;;
+    esac
+  done < "$PROJECT/$cfg"
+done
+
+# 2) rules from flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ro|--rw) [[ $# -ge 2 ]] || { echo "Missing path for $1" >&2; exit 1; }; add_mount "${1#--}" "$2"; shift 2 ;;
+    --gpu)     [[ $# -ge 2 ]] || { echo "Missing GPU value" >&2; exit 1; }; GPU="$2"; shift 2 ;;
+    --)        shift; [[ $# -gt 0 ]] || { echo "Missing command" >&2; exit 1; }; CMD=("$@"); break ;;
+    *)         echo "agent-box: unknown option $1" >&2; exit 1 ;;
+  esac
+done
+
+GPU_ARGS=()
+if [[ -n "$GPU" ]]; then
+  if [[ "$GPU" == "all" ]]; then GPU_ARGS=(--gpus all)
+  else GPU_ARGS=(--gpus "\"device=$GPU\""); fi
+  GPU_ARGS+=(--shm-size=16g)   # PyTorch DataLoader workers need shared memory
+  echo "  gpu $GPU"
+fi
+
+USER_ARGS=()
+if [[ "$ENGINE" == "podman" ]]; then
+  USER_ARGS+=(--userns=keep-id:uid=1000,gid=1000)
+fi
+
+exec "$ENGINE" run --rm -it \
+  ${USER_ARGS[@]+"${USER_ARGS[@]}"} \
+  --cap-drop=ALL \
+  --security-opt no-new-privileges \
+  -v "${AGENT_HOME_VOLUME:-agent-box-home}:/home/agent" \
+  "${MOUNTS[@]}" \
+  ${GPU_ARGS[@]+"${GPU_ARGS[@]}"} \
+  -w "$PROJECT" \
+  "$IMAGE" "${CMD[@]}"
