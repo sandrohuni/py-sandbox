@@ -46,7 +46,10 @@ def cli(root, *arguments, env=None):
     )
 
 
-def test_both_backends_preserve_read_only_overlays_and_paths(project, tmp_path):
+@pytest.mark.parametrize("with_docker", [False, True])
+def test_both_backends_preserve_read_only_overlays_and_paths(project, tmp_path, with_docker):
+    if with_docker:
+        (project / "docker").mkdir()
     data = project / "data with spaces"
     data.mkdir()
     output = tmp_path / "external output"
@@ -59,9 +62,11 @@ def test_both_backends_preserve_read_only_overlays_and_paths(project, tmp_path):
     assert {"path": str(data), "readOnly": True} in sbx["additionalWorkspaces"]
     assert {"path": str(output), "readOnly": False} in sbx["additionalWorkspaces"]
     assert dev["workspaceFolder"] == "${localWorkspaceFolder}"
-    for name in (".devcontainer", "setup", "docker"):
+    for name in (".devcontainer", "setup", *(["docker"] if with_docker else [])):
         assert any(f"/{name},type=bind,readonly" in mount for mount in dev["mounts"])
         assert {"path": str(project / name), "readOnly": True} in sbx["additionalWorkspaces"]
+    assert any("/docker,type=bind,readonly" in mount for mount in dev["mounts"]) == with_docker
+    assert ({"path": str(project / "docker"), "readOnly": True} in sbx["additionalWorkspaces"]) == with_docker
     assert not any("/scripts," in mount for mount in dev["mounts"])
 
 

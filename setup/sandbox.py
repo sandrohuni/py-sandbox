@@ -118,7 +118,9 @@ def parse_plan(text: str, root: Path, environment: dict[str, str]) -> AccessPlan
     mounts.sort(key=lambda mount: (len(mount.path.parts), str(mount.path)))
     resolved_mounts = json.dumps([(str(mount.path), mount.read_only) for mount in mounts])
     fingerprint = hashlib.sha256(
-        ("readonly-controls-v1\n" + str(root) + "\n" + text + resolved_mounts).encode()
+        (
+            "readonly-controls-v2\n" + str(root) + "\n" + text + resolved_mounts + str((root / "docker").is_dir())
+        ).encode()
     ).hexdigest()
     return AccessPlan(engine, agent, tuple(mounts), memory, cpus, shm, gpu, tuple(hosts), fingerprint)
 
@@ -140,6 +142,7 @@ def dev_config(plan: AccessPlan, root: Path) -> dict:
             *[
                 f"source={workspace}/{name},target={workspace}/{name},type=bind,readonly"
                 for name in PROTECTED_DIRECTORIES
+                if name != "docker" or (root / name).is_dir()
             ],
             "source=${devcontainerId}-claude,target=/home/agent/.claude,type=volume",
             "source=${devcontainerId}-codex,target=/home/agent/.codex,type=volume",
@@ -180,7 +183,11 @@ def sbx_config(plan: AccessPlan, root: Path) -> dict:
         "sandboxOptions": {"memory": plan.memory, "cpus": plan.cpus, "gpu": plan.gpu, "writableEnvFiles": False},
     }
     extra = [{"path": str(mount.path), "readOnly": mount.read_only} for mount in plan.mounts if mount.path != root]
-    extra.extend({"path": str(root / name), "readOnly": True} for name in PROTECTED_DIRECTORIES)
+    extra.extend(
+        {"path": str(root / name), "readOnly": True}
+        for name in PROTECTED_DIRECTORIES
+        if name != "docker" or (root / name).is_dir()
+    )
     config["additionalWorkspaces"] = extra
     if plan.network_allow:
         hosts = ",".join(plan.network_allow)
@@ -264,7 +271,8 @@ def dev(root: Path, action: str, command: list[str], plan: AccessPlan | None) ->
         print(f"Engine: {engine}\nWorkspace: {root}\nConfigured directory mounts:")
         for mount in plan.mounts:
             print(f"  {'ro' if mount.read_only else 'rw'}  {mount.path}")
-        print("  ro  .devcontainer/, setup/, docker/ (control files; scripts/ stays writable)")
+        controls = ", ".join(f"{name}/" for name in PROTECTED_DIRECTORIES if name != "docker" or (root / name).is_dir())
+        print(f"  ro  {controls} (control files; scripts/ stays writable)")
         print("Credential volumes: scoped by devcontainer ID; persistent across rebuilds/down")
         active_engine = runtime.get("engine", engine)
         if shutil.which(active_engine) is None:
